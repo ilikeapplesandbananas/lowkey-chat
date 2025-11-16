@@ -1,6 +1,8 @@
 import { useState, useRef, useEffect } from "react";
 import ChatMessage from "@/components/ChatMessage";
 import ChatInput from "@/components/ChatInput";
+import VoiceInput from "@/components/VoiceInput";
+import ChatSettings from "@/components/ChatSettings";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
 import lowkeyLogo from "@/assets/lowkey-logo.png";
@@ -14,10 +16,12 @@ const Index = () => {
   const [messages, setMessages] = useState<Message[]>([
     {
       role: "assistant",
-      content: "yooo what's good! 👋 i'm lowkey ai, your gen z bestie who's here to help with literally anything. no cap, i'm fast, i remember our convos, and i'm way less restrictive than those other ai tools. what's on your mind twin?",
+      content: "Hey there! 👋 I'm Lowkey AI, your helpful assistant. I'm here to chat, answer questions, help with tasks, and more. I can check weather, find news, do calculations, and even chat in different languages. What can I help you with today?",
     },
   ]);
   const [isLoading, setIsLoading] = useState(false);
+  const [personality, setPersonality] = useState("friendly");
+  const [language, setLanguage] = useState("en");
   const scrollRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
@@ -46,6 +50,8 @@ const Index = () => {
               role: m.role,
               content: m.content,
             })),
+            personality,
+            language,
           }),
         }
       );
@@ -145,18 +151,39 @@ const Index = () => {
     }
   };
 
+  const handleVoiceTranscript = (transcript: string) => {
+    handleSendMessage(transcript);
+  };
+
+  // Speak the last assistant message when it's complete
+  useEffect(() => {
+    const lastMessage = messages[messages.length - 1];
+    if (lastMessage?.role === "assistant" && !isLoading && (window as any).speakResponse) {
+      // Optional: Auto-speak responses
+      // (window as any).speakResponse(lastMessage.content);
+    }
+  }, [messages, isLoading]);
+
   return (
     <div className="flex flex-col h-screen bg-background">
       {/* Header */}
       <header className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-10">
-        <div className="container mx-auto px-4 py-4 flex items-center gap-3">
-          <img src={lowkeyLogo} alt="Lowkey AI" className="w-12 h-12 rounded-full shadow-lg" />
-          <div>
-            <h1 className="text-2xl font-bold bg-gradient-primary bg-clip-text text-transparent">
-              Lowkey AI
-            </h1>
-            <p className="text-xs text-muted-foreground">your gen z bestie 💜</p>
+        <div className="container mx-auto px-4 py-4 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <img src={lowkeyLogo} alt="Lowkey AI" className="w-12 h-12 rounded-full shadow-lg" />
+            <div>
+              <h1 className="text-2xl font-bold bg-gradient-primary bg-clip-text text-transparent">
+                Lowkey AI
+              </h1>
+              <p className="text-xs text-muted-foreground">your helpful assistant 💜</p>
+            </div>
           </div>
+          <ChatSettings
+            personality={personality}
+            language={language}
+            onPersonalityChange={setPersonality}
+            onLanguageChange={setLanguage}
+          />
         </div>
       </header>
 
@@ -183,7 +210,12 @@ const Index = () => {
       {/* Input Area */}
       <div className="border-t border-border bg-card/50 backdrop-blur-sm">
         <div className="container mx-auto max-w-3xl p-4">
-          <ChatInput onSend={handleSendMessage} disabled={isLoading} />
+          <div className="flex gap-2">
+            <div className="flex-1">
+              <ChatInput onSend={handleSendMessage} disabled={isLoading} />
+            </div>
+            <VoiceInput onTranscript={handleVoiceTranscript} disabled={isLoading} />
+          </div>
         </div>
       </div>
     </div>

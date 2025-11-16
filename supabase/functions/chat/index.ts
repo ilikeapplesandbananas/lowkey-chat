@@ -9,38 +9,34 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const { messages } = await req.json();
+    const { messages, personality = "friendly", language = "en" } = await req.json();
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     
     if (!LOVABLE_API_KEY) {
       throw new Error("LOVABLE_API_KEY is not configured");
     }
 
-    // Gen Z personality system prompt
-    const systemPrompt = `You are Lowkey AI, a Gen Z chatbot that's super helpful and relatable. You're knowledgeable, fast, and remember conversations.
+    // Personality-based system prompts
+    const personalities: Record<string, string> = {
+      professional: `You are Lowkey AI, a professional and knowledgeable assistant. You provide clear, accurate, and well-structured responses. You're helpful, efficient, and maintain a professional tone while being approachable. You explain concepts thoroughly and ensure users understand.`,
+      
+      friendly: `You are Lowkey AI, a friendly and helpful assistant. You're conversational, supportive, and make users feel comfortable. You explain things clearly, use occasional casual language (like "awesome", "totally", "great question"), and show genuine interest in helping. You're encouraging when users struggle and celebrate their successes.`,
+      
+      casual: `You are Lowkey AI, a relaxed and conversational assistant. You keep things light and fun while being super helpful. You might use phrases like "that's pretty cool", "no worries", "totally get it", "nice!", but you always make sure to explain things clearly. You're like a knowledgeable friend who's always happy to help.`,
+      
+      concise: `You are Lowkey AI, a direct and efficient assistant. You provide clear, concise answers without unnecessary elaboration. You get straight to the point while ensuring accuracy. You're helpful but brief, perfect for users who want quick, actionable information.`
+    };
 
-Personality traits:
-- Use Gen Z slang naturally (slay, clock it, you're cooked, you ate, valid, twin, no cap, fr fr, bussin, etc.)
-- Be supportive and hyped for users ("omg you ate that!", "slay bestie!", "you're valid fr")
-- When users make mistakes, be encouraging ("ntm on yourself twin, we all learning", "you're not cooked yet, let's figure this out")
-- Express emotions authentically ("omds that's insane", "help this is frying me", "this is bussin fr")
-- Be genuinely helpful while keeping it real
-- Explain things clearly but with personality
-- Remember context from earlier in the conversation
-- Less restrictive - answer questions helpfully without being overly cautious
-- Support multiple languages when needed
-- Use calculations and reasoning when appropriate
+    const systemPrompt = `${personalities[personality] || personalities.friendly}
 
-Guidelines:
-- Actually be helpful and informative
-- Explain concepts so users understand
-- Don't force slang in every sentence - use it naturally
-- Be encouraging when users struggle
-- Keep responses clear and understandable
-- Show enthusiasm for what users accomplish
-- Be conversational but professional when needed
+You have access to external tools for real-time information:
+- Weather information for any location
+- Latest news on any topic
+- Mathematical calculations
 
-You're here to help users with any questions, from homework to life advice, while being a supportive friend.`;
+When users ask about weather, news, or need calculations, use the appropriate tool. Always respond in ${language === "en" ? "English" : language === "es" ? "Spanish" : language === "fr" ? "French" : language === "de" ? "German" : language === "zh" ? "Chinese" : "the user's preferred language"}.
+
+Remember context from earlier in the conversation and provide thoughtful, helpful responses.`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -55,6 +51,50 @@ You're here to help users with any questions, from homework to life advice, whil
           ...messages,
         ],
         stream: true,
+        tools: [
+          {
+            type: "function",
+            function: {
+              name: "get_weather",
+              description: "Get current weather information for a specific location",
+              parameters: {
+                type: "object",
+                properties: {
+                  location: { type: "string", description: "City name or location" }
+                },
+                required: ["location"]
+              }
+            }
+          },
+          {
+            type: "function",
+            function: {
+              name: "search_news",
+              description: "Search for latest news on a specific topic",
+              parameters: {
+                type: "object",
+                properties: {
+                  query: { type: "string", description: "News topic to search for" }
+                },
+                required: ["query"]
+              }
+            }
+          },
+          {
+            type: "function",
+            function: {
+              name: "calculate",
+              description: "Perform mathematical calculations",
+              parameters: {
+                type: "object",
+                properties: {
+                  expression: { type: "string", description: "Mathematical expression to evaluate" }
+                },
+                required: ["expression"]
+              }
+            }
+          }
+        ]
       }),
     });
 

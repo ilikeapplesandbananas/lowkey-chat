@@ -20,28 +20,30 @@ const ChatInput = ({ onSend, disabled }: ChatInputProps) => {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="flex gap-2 items-end">
-      <Textarea
-        value={message}
-        onChange={(e) => setMessage(e.target.value)}
-        placeholder="Type your message here..."
-        disabled={disabled}
-        className="min-h-[60px] max-h-[200px] resize-none bg-card border-border"
-        onKeyDown={(e) => {
-          if (e.key === "Enter" && !e.shiftKey) {
-            e.preventDefault();
-            handleSubmit(e);
-          }
-        }}
-      />
-      <Button
-        type="submit"
-        disabled={!message.trim() || disabled}
-        size="icon"
-        className="h-[60px] w-[60px] bg-gradient-primary hover:opacity-90 transition-opacity"
-      >
-        <Send className="h-5 w-5" />
-      </Button>
+    <form onSubmit={handleSubmit} className="w-full">
+      <div className="flex gap-2 items-end">
+        <Textarea
+          value={message}
+          onChange={(e) => setMessage(e.target.value)}
+          placeholder="Type your message here..."
+          disabled={disabled}
+          className="min-h-[60px] max-h-[200px] resize-none bg-card border-border flex-1"
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && !e.shiftKey) {
+              e.preventDefault();
+              handleSubmit(e);
+            }
+          }}
+        />
+        <Button
+          type="submit"
+          disabled={!message.trim() || disabled}
+          size="icon"
+          className="h-[60px] w-[60px] bg-gradient-primary hover:opacity-90 transition-opacity"
+        >
+          <Send className="h-5 w-5" />
+        </Button>
+      </div>
     </form>
   );
 };

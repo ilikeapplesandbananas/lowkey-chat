@@ -6,6 +6,8 @@ import ChatSettings from "@/components/ChatSettings";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
 import lowkeyLogo from "@/assets/lowkey-logo.png";
+import { Button } from "@/components/ui/button";
+import { Bookmark, BookmarkCheck } from "lucide-react";
 
 interface Message {
   role: "user" | "assistant";
@@ -16,9 +18,11 @@ const Index = () => {
   const [messages, setMessages] = useState<Message[]>([
     {
       role: "assistant",
-      content: "Hey there! 👋 I'm Lowkey AI, your helpful assistant. I'm here to chat, answer questions, help with tasks, and more. I can check weather, find news, do calculations, and even chat in different languages. What can I help you with today?",
+      content: "Hey there! 👋 I'm Lowkey AI, your helpful assistant. I'm here to chat, answer questions, help with tasks, and more. What can I help you with today?",
     },
   ]);
+  const [bookmarkedMessages, setBookmarkedMessages] = useState<number[]>([]);
+  const [showBookmarks, setShowBookmarks] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [personality, setPersonality] = useState("friendly");
   const [language, setLanguage] = useState("en");
@@ -31,7 +35,14 @@ const Index = () => {
     }
   }, [messages]);
 
-  const handleSendMessage = async (content: string) => {
+  const handleSendMessage = async (content: string, files?: File[]) => {
+    // Note: File handling can be added to the backend in future iterations
+    if (files && files.length > 0) {
+      toast({
+        title: "Files received",
+        description: "File analysis will be added in a future update",
+      });
+    }
     const userMessage: Message = { role: "user", content };
     setMessages((prev) => [...prev, userMessage]);
     setIsLoading(true);
@@ -178,21 +189,56 @@ const Index = () => {
               <p className="text-xs text-muted-foreground">your helpful assistant 💜</p>
             </div>
           </div>
-          <ChatSettings
-            personality={personality}
-            language={language}
-            onPersonalityChange={setPersonality}
-            onLanguageChange={setLanguage}
-          />
+          <div className="flex items-center gap-2">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setShowBookmarks(!showBookmarks)}
+              className={showBookmarks ? "text-primary" : ""}
+            >
+              <Bookmark className="h-5 w-5" />
+            </Button>
+            <ChatSettings
+              personality={personality}
+              language={language}
+              onPersonalityChange={setPersonality}
+              onLanguageChange={setLanguage}
+            />
+          </div>
         </div>
       </header>
 
       {/* Chat Area */}
       <ScrollArea className="flex-1 px-4" ref={scrollRef}>
         <div className="container mx-auto max-w-3xl py-6">
-          {messages.map((message, index) => (
-            <ChatMessage key={index} role={message.role} content={message.content} />
-          ))}
+          {(showBookmarks ? messages.filter((_, i) => bookmarkedMessages.includes(i)) : messages).map((message, index) => {
+            const actualIndex = showBookmarks ? messages.indexOf(message) : index;
+            return (
+              <div key={actualIndex} className="relative group">
+                <ChatMessage role={message.role} content={message.content} />
+                {message.role === "assistant" && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
+                    onClick={() => {
+                      setBookmarkedMessages(prev =>
+                        prev.includes(actualIndex)
+                          ? prev.filter(i => i !== actualIndex)
+                          : [...prev, actualIndex]
+                      );
+                    }}
+                  >
+                    {bookmarkedMessages.includes(actualIndex) ? (
+                      <BookmarkCheck className="h-4 w-4 text-primary" />
+                    ) : (
+                      <Bookmark className="h-4 w-4" />
+                    )}
+                  </Button>
+                )}
+              </div>
+            );
+          })}
           {isLoading && messages[messages.length - 1]?.role !== "assistant" && (
             <div className="flex gap-3 p-4">
               <div className="bg-card border border-border rounded-2xl px-4 py-3">

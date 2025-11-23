@@ -104,7 +104,7 @@ const VoiceInput = ({ onTranscript, disabled }: VoiceInputProps) => {
         disabled={disabled}
         size="icon"
         variant={isListening ? "default" : "outline"}
-        className={`h-10 w-10 ${isListening ? "bg-primary animate-pulse" : ""}`}
+        className={`h-10 w-10 flex-shrink-0 ${isListening ? "bg-primary animate-pulse" : ""}`}
       >
         {isListening ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
       </Button>
@@ -115,7 +115,7 @@ const VoiceInput = ({ onTranscript, disabled }: VoiceInputProps) => {
         disabled={!isSpeaking}
         size="icon"
         variant="outline"
-        className="h-10 w-10"
+        className="h-10 w-10 flex-shrink-0"
       >
         <Volume2 className={`h-4 w-4 ${isSpeaking ? 'animate-pulse' : ''}`} />
       </Button>

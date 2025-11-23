@@ -37,7 +37,7 @@ const ChatInput = ({ onSend, disabled }: ChatInputProps) => {
 
   return (
     <form onSubmit={handleSubmit} className="w-full">
-      <div className="flex gap-2 items-end">
+      <div className="flex gap-2 items-center">
         <input
           type="file"
           ref={fileInputRef}
@@ -52,7 +52,7 @@ const ChatInput = ({ onSend, disabled }: ChatInputProps) => {
           disabled={disabled}
           size="icon"
           variant="outline"
-          className="h-10 w-10"
+          className="h-10 w-10 flex-shrink-0"
         >
           <Paperclip className="h-4 w-4" />
         </Button>
@@ -62,7 +62,7 @@ const ChatInput = ({ onSend, disabled }: ChatInputProps) => {
             onChange={(e) => setMessage(e.target.value)}
             placeholder={files.length > 0 ? `${files.length} file(s) attached...` : "Type your message here..."}
             disabled={disabled}
-            className="min-h-[40px] max-h-[200px] resize-none bg-card border-border"
+            className="h-10 max-h-[200px] resize-none bg-card border-border py-2"
             onKeyDown={(e) => {
               if (e.key === "Enter" && !e.shiftKey) {
                 e.preventDefault();
@@ -75,7 +75,7 @@ const ChatInput = ({ onSend, disabled }: ChatInputProps) => {
           type="submit"
           disabled={(!message.trim() && files.length === 0) || disabled}
           size="icon"
-          className="h-10 w-10 bg-gradient-primary hover:opacity-90 transition-opacity"
+          className="h-10 w-10 flex-shrink-0 bg-gradient-primary hover:opacity-90 transition-opacity"
         >
           <Send className="h-4 w-4" />
         </Button>

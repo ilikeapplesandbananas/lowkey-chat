@@ -3,8 +3,11 @@ import ChatMessage from "@/components/ChatMessage";
 import ChatInput from "@/components/ChatInput";
 import VoiceInput from "@/components/VoiceInput";
 import ChatSettings from "@/components/ChatSettings";
+import { ChatHistory } from "@/components/ChatHistory";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 import lowkeyLogo from "@/assets/lowkey-logo.png";
 import { Button } from "@/components/ui/button";
 import { Bookmark, BookmarkCheck } from "lucide-react";
@@ -26,6 +29,7 @@ const Index = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [personality, setPersonality] = useState("friendly");
   const [language, setLanguage] = useState("en");
+  const [currentConversationId, setCurrentConversationId] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
@@ -35,6 +39,75 @@ const Index = () => {
     }
   }, [messages]);
 
+  useEffect(() => {
+    if (currentConversationId) {
+      loadConversation(currentConversationId);
+    }
+  }, [currentConversationId]);
+
+  const loadConversation = async (conversationId: string) => {
+    const { data, error } = await supabase
+      .from("messages")
+      .select("*")
+      .eq("conversation_id", conversationId)
+      .order("created_at", { ascending: true });
+
+    if (error) {
+      toast({
+        title: "Error loading conversation",
+        description: error.message,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (data && data.length > 0) {
+      setMessages(data.map((msg) => ({ role: msg.role as "user" | "assistant", content: msg.content })));
+    }
+  };
+
+  const saveMessage = async (role: "user" | "assistant", content: string) => {
+    if (!currentConversationId) return;
+
+    await supabase.from("messages").insert({
+      conversation_id: currentConversationId,
+      role,
+      content,
+    });
+  };
+
+  const createNewConversation = async (firstMessage: string) => {
+    const title = firstMessage.slice(0, 50) + (firstMessage.length > 50 ? "..." : "");
+    const { data, error } = await supabase
+      .from("conversations")
+      .insert({ title })
+      .select()
+      .single();
+
+    if (error) {
+      toast({
+        title: "Error creating conversation",
+        description: error.message,
+        variant: "destructive",
+      });
+      return null;
+    }
+
+    return data.id;
+  };
+
+  const handleNewChat = () => {
+    setCurrentConversationId(null);
+    setMessages([
+      {
+        role: "assistant",
+        content: "Hey there! 👋 I'm Lowkey AI, your helpful assistant. I'm here to chat, answer questions, help with tasks, and more. What can I help you with today?",
+      },
+    ]);
+    setBookmarkedMessages([]);
+    setShowBookmarks(false);
+  };
+
   const handleSendMessage = async (content: string, files?: File[]) => {
     // Note: File handling can be added to the backend in future iterations
     if (files && files.length > 0) {
@@ -43,9 +116,21 @@ const Index = () => {
         description: "File analysis will be added in a future update",
       });
     }
+
+    // Create conversation if this is the first message
+    let conversationId = currentConversationId;
+    if (!conversationId) {
+      conversationId = await createNewConversation(content);
+      if (!conversationId) return;
+      setCurrentConversationId(conversationId);
+    }
+
     const userMessage: Message = { role: "user", content };
     setMessages((prev) => [...prev, userMessage]);
     setIsLoading(true);
+
+    // Save user message
+    await saveMessage("user", content);
 
     try {
       const response = await fetch(
@@ -176,91 +261,102 @@ const Index = () => {
   }, [messages, isLoading]);
 
   return (
-    <div className="flex flex-col h-screen bg-background">
-      {/* Header */}
-      <header className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-10">
-        <div className="container mx-auto px-4 py-4 flex items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <img src={lowkeyLogo} alt="Lowkey AI" className="w-12 h-12 rounded-full shadow-lg" />
-            <div>
-              <h1 className="text-2xl font-bold bg-gradient-primary bg-clip-text text-transparent">
-                Lowkey AI
-              </h1>
-              <p className="text-xs text-muted-foreground">your helpful assistant 💜</p>
+    <div className="flex h-screen bg-background">
+      {/* Chat History Sidebar */}
+      <ChatHistory
+        currentConversationId={currentConversationId}
+        onSelectConversation={setCurrentConversationId}
+        onNewChat={handleNewChat}
+      />
+
+      {/* Main Chat Area */}
+      <div className="flex flex-col flex-1">
+        {/* Header */}
+        <header className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-10">
+          <div className="container mx-auto px-4 py-4 flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <img src={lowkeyLogo} alt="Lowkey AI" className="w-12 h-12 rounded-full shadow-lg" />
+              <div>
+                <h1 className="text-2xl font-bold bg-gradient-primary bg-clip-text text-transparent">
+                  Lowkey AI
+                </h1>
+                <p className="text-xs text-muted-foreground">your helpful assistant 💜</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setShowBookmarks(!showBookmarks)}
+                className={showBookmarks ? "text-primary" : ""}
+              >
+                <Bookmark className="h-5 w-5" />
+              </Button>
+              <ThemeToggle />
+              <ChatSettings
+                personality={personality}
+                language={language}
+                onPersonalityChange={setPersonality}
+                onLanguageChange={setLanguage}
+              />
             </div>
           </div>
-          <div className="flex items-center gap-2">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setShowBookmarks(!showBookmarks)}
-              className={showBookmarks ? "text-primary" : ""}
-            >
-              <Bookmark className="h-5 w-5" />
-            </Button>
-            <ChatSettings
-              personality={personality}
-              language={language}
-              onPersonalityChange={setPersonality}
-              onLanguageChange={setLanguage}
-            />
-          </div>
-        </div>
-      </header>
+        </header>
 
-      {/* Chat Area */}
-      <ScrollArea className="flex-1 px-4" ref={scrollRef}>
-        <div className="container mx-auto max-w-3xl py-6">
-          {(showBookmarks ? messages.filter((_, i) => bookmarkedMessages.includes(i)) : messages).map((message, index) => {
-            const actualIndex = showBookmarks ? messages.indexOf(message) : index;
-            return (
-              <div key={actualIndex} className="relative group">
-                <ChatMessage role={message.role} content={message.content} />
-                {message.role === "assistant" && (
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
-                    onClick={() => {
-                      setBookmarkedMessages(prev =>
-                        prev.includes(actualIndex)
-                          ? prev.filter(i => i !== actualIndex)
-                          : [...prev, actualIndex]
-                      );
-                    }}
-                  >
-                    {bookmarkedMessages.includes(actualIndex) ? (
-                      <BookmarkCheck className="h-4 w-4 text-primary" />
-                    ) : (
-                      <Bookmark className="h-4 w-4" />
-                    )}
-                  </Button>
-                )}
-              </div>
-            );
-          })}
-          {isLoading && messages[messages.length - 1]?.role !== "assistant" && (
-            <div className="flex gap-3 p-4">
-              <div className="bg-card border border-border rounded-2xl px-4 py-3">
-                <div className="flex gap-1">
-                  <div className="w-2 h-2 bg-primary rounded-full animate-bounce" />
-                  <div className="w-2 h-2 bg-secondary rounded-full animate-bounce [animation-delay:0.2s]" />
-                  <div className="w-2 h-2 bg-accent rounded-full animate-bounce [animation-delay:0.4s]" />
+        {/* Chat Area */}
+        <ScrollArea className="flex-1 px-4" ref={scrollRef}>
+          <div className="container mx-auto max-w-3xl py-6">
+            {(showBookmarks ? messages.filter((_, i) => bookmarkedMessages.includes(i)) : messages).map((message, index) => {
+              const actualIndex = showBookmarks ? messages.indexOf(message) : index;
+              return (
+                <div key={actualIndex} className="relative group">
+                  <ChatMessage role={message.role} content={message.content} />
+                  {message.role === "assistant" && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
+                      onClick={() => {
+                        setBookmarkedMessages(prev =>
+                          prev.includes(actualIndex)
+                            ? prev.filter(i => i !== actualIndex)
+                            : [...prev, actualIndex]
+                        );
+                      }}
+                    >
+                      {bookmarkedMessages.includes(actualIndex) ? (
+                        <BookmarkCheck className="h-4 w-4 text-primary" />
+                      ) : (
+                        <Bookmark className="h-4 w-4" />
+                      )}
+                    </Button>
+                  )}
+                </div>
+              );
+            })}
+            {isLoading && messages[messages.length - 1]?.role !== "assistant" && (
+              <div className="flex gap-3 p-4">
+                <div className="bg-card border border-border rounded-2xl px-4 py-3">
+                  <div className="flex gap-1">
+                    <div className="w-2 h-2 bg-primary rounded-full animate-bounce" />
+                    <div className="w-2 h-2 bg-secondary rounded-full animate-bounce [animation-delay:0.2s]" />
+                    <div className="w-2 h-2 bg-accent rounded-full animate-bounce [animation-delay:0.4s]" />
+                  </div>
                 </div>
               </div>
-            </div>
-          )}
-        </div>
-      </ScrollArea>
+            )}
+          </div>
+        </ScrollArea>
 
-      {/* Input Area */}
-      <div className="border-t border-border bg-card/50 backdrop-blur-sm">
-        <div className="container mx-auto max-w-3xl p-4">
-          <div className="flex gap-2">
-            <div className="flex-1">
-              <ChatInput onSend={handleSendMessage} disabled={isLoading} />
+        {/* Input Area */}
+        <div className="border-t border-border bg-card/50 backdrop-blur-sm">
+          <div className="container mx-auto max-w-3xl p-4">
+            <div className="flex gap-2">
+              <div className="flex-1">
+                <ChatInput onSend={handleSendMessage} disabled={isLoading} />
+              </div>
+              <VoiceInput onTranscript={handleVoiceTranscript} disabled={isLoading} />
             </div>
-            <VoiceInput onTranscript={handleVoiceTranscript} disabled={isLoading} />
           </div>
         </div>
       </div>

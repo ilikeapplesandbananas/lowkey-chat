@@ -28,6 +28,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
+import { userService } from "@/services/userService";
 
 interface Conversation {
   id: string;
@@ -41,6 +42,7 @@ interface ChatHistoryProps {
   onSelectConversation: (conversationId: string | null) => void;
   onNewChat: () => void;
   className?: string;
+  lastUpdated?: number;
 }
 
 export function ChatHistory({
@@ -48,6 +50,7 @@ export function ChatHistory({
   onSelectConversation,
   onNewChat,
   className,
+  lastUpdated,
 }: ChatHistoryProps) {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -59,12 +62,20 @@ export function ChatHistory({
 
   useEffect(() => {
     loadConversations();
-  }, []);
+  }, [lastUpdated]);
 
   const loadConversations = async () => {
+    const myConversationIds = userService.getConversationIds();
+    
+    if (myConversationIds.length === 0) {
+      setConversations([]);
+      return;
+    }
+
     const { data, error } = await supabase
       .from("conversations")
       .select("*")
+      .in("id", myConversationIds)
       .order("updated_at", { ascending: false });
 
     if (error) {
@@ -98,6 +109,9 @@ export function ChatHistory({
       title: "Conversation deleted",
       description: "The chat has been removed from your history",
     });
+
+    // Remove from local storage
+    userService.removeConversationId(id);
 
     if (currentConversationId === id) {
       onNewChat();

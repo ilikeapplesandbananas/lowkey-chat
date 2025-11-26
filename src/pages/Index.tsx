@@ -17,6 +17,7 @@ import { processFile, ProcessedFile } from "@/lib/file-processing";
 import { ChatExport } from "@/components/ChatExport";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { memoryService } from "@/services/memoryService";
+import { userService } from "@/services/userService";
 
 interface Message {
   role: "user" | "assistant";
@@ -38,8 +39,13 @@ const Index = () => {
   const lastCreatedConversationAt = useRef<number>(0);
   const { toast } = useToast();
   const isMobile = useIsMobile();
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(!isMobile);
   const [isWaitingForName, setIsWaitingForName] = useState(false);
+  const [conversationsUpdated, setConversationsUpdated] = useState(0);
+
+  useEffect(() => {
+    setIsSidebarOpen(!isMobile);
+  }, [isMobile]);
 
   const initializeChat = async () => {
     const nameMemory = await memoryService.getMemory("user_name");
@@ -211,9 +217,12 @@ const Index = () => {
 
   const createNewConversation = async (firstMessage: string) => {
     const title = firstMessage.slice(0, 50) + (firstMessage.length > 50 ? "..." : "");
+    
     const { data, error } = await supabase
       .from("conversations")
-      .insert({ title })
+      .insert({ 
+        title
+      })
       .select()
       .single();
 
@@ -224,6 +233,12 @@ const Index = () => {
         variant: "destructive",
       });
       return null;
+    }
+
+    // Save the new conversation ID to local storage to track ownership
+    if (data) {
+      userService.addConversationId(data.id);
+      setConversationsUpdated(Date.now());
     }
 
     return data.id;
@@ -800,16 +815,35 @@ IMPORTANT:
   }, [messages, isLoading]);
 
   return (
-    <div className="flex h-screen bg-background">
+    <div className="flex h-screen bg-background overflow-hidden">
+      {/* Mobile Overlay */}
+      {isMobile && isSidebarOpen && (
+        <div 
+          className="fixed inset-0 bg-black/50 z-40 backdrop-blur-sm"
+          onClick={() => setIsSidebarOpen(false)}
+        />
+      )}
+
       {/* Chat History Sidebar */}
       <div 
-        className={`${isSidebarOpen ? 'w-72' : 'w-0'} transition-all duration-300 ease-in-out overflow-hidden shrink-0`}
+        className={`${
+          isSidebarOpen ? 'w-72 translate-x-0' : 'w-0 -translate-x-full md:w-0 md:translate-x-0'
+        } ${
+          isMobile ? 'fixed h-full z-50 shadow-2xl' : 'relative'
+        } transition-all duration-300 ease-in-out overflow-hidden shrink-0 bg-background border-r border-border`}
       >
         <ChatHistory
           currentConversationId={currentConversationId}
-          onSelectConversation={setCurrentConversationId}
-          onNewChat={handleNewChat}
+          onSelectConversation={(id) => {
+            setCurrentConversationId(id);
+            if (isMobile) setIsSidebarOpen(false);
+          }}
+          onNewChat={() => {
+            handleNewChat();
+            if (isMobile) setIsSidebarOpen(false);
+          }}
           className="w-72 h-full"
+          lastUpdated={conversationsUpdated}
         />
       </div>
 

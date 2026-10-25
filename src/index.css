@@ -1,14 +1,10 @@
+﻿@import "katex/dist/katex.min.css";
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
-All colors MUST be HSL.
-*/
-
 @layer base {
   :root {
-    /* Gen Z vibrant colors with Y2K aesthetic */
     --background: 280 100% 99%;
     --foreground: 280 10% 10%;
 
@@ -18,19 +14,15 @@ All colors MUST be HSL.
     --popover: 0 0% 100%;
     --popover-foreground: 280 10% 10%;
 
-    /* Primary: Vibrant purple gradient */
     --primary: 280 100% 70%;
     --primary-foreground: 0 0% 100%;
     
-    /* Secondary: Electric pink */
     --secondary: 320 100% 75%;
     --secondary-foreground: 0 0% 100%;
 
-    /* Muted: Soft pastel */
     --muted: 280 30% 95%;
     --muted-foreground: 280 10% 40%;
 
-    /* Accent: Cyber blue */
     --accent: 200 100% 70%;
     --accent-foreground: 0 0% 100%;
 
@@ -43,7 +35,6 @@ All colors MUST be HSL.
 
     --radius: 1rem;
 
-    /* Custom Gen Z tokens */
     --gradient-primary: linear-gradient(135deg, hsl(280 100% 70%), hsl(320 100% 75%));
     --gradient-accent: linear-gradient(135deg, hsl(320 100% 75%), hsl(200 100% 70%));
     --shadow-glow: 0 0 30px hsl(280 100% 70% / 0.3);
@@ -107,4 +98,15 @@ All colors MUST be HSL.
   body {
     @apply bg-background text-foreground;
   }
+}
+
+/* KaTeX custom formatting */
+.katex-display {
+  margin: 0.75rem 0 !important;
+  padding: 0.5rem 1rem;
+  background: hsl(var(--card));
+  border-radius: 0.75rem;
+  border: 1px solid hsl(var(--border) / 0.7);
+  overflow-x: auto;
+  overflow-y: hidden;
 }
